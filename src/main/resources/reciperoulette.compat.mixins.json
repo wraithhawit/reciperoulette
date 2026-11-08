@@ -1,0 +1,12 @@
+{
+  "required": false,
+  "minVersion": "0.8.5",
+  "package": "com.wraithhawit.reciperoulette.mixin.compat",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "ArcRecyclingCalculatorMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}
