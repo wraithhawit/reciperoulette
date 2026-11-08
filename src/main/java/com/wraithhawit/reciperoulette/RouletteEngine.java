@@ -127,8 +127,10 @@ public final class RouletteEngine {
         List<RecipeHolder<?>> list = new ArrayList<>(recipes);
         Map<String, TypeStats> stats = new TreeMap<>();
         BitSet hasOutputs = new BitSet(list.size());
-        Set<String> outputPool = new HashSet<>();
-        ItemDefaults defaults = new ItemDefaults();
+        // Variant key (id, or id + sorted components) -> the stack. Variants, not items, are
+        // shuffled: Sophisticated Storage's spruce and oak chests are one item with different
+        // wood_type components, and each needs its own place in the cycle to stay craftable.
+        Map<String, OutputWalker.Stack> variants = new HashMap<>();
 
         // Pass 1: find every output item.
         for (int i = 0; i < list.size(); i++) {
@@ -147,8 +149,8 @@ public final class RouletteEngine {
             int[] outs = {0};
             OutputWalker.forEachOutput(json, isItem, isFluid, (s, components) -> {
                 String id = ResourceLocation.parse(s).toString();
-                outputPool.add(id);
-                defaults.record(id, components);
+                variants.computeIfAbsent(OutputWalker.variantKey(id, components),
+                        k -> new OutputWalker.Stack(id, components == null ? null : components.deepCopy()));
                 outs[0]++;
             });
             if (outs[0] == 0) {
@@ -171,16 +173,19 @@ public final class RouletteEngine {
         }
         long pass1 = System.nanoTime();
 
-        Set<String> pool;
         if (poolMode == RouletteConfig.Pool.ALL_ITEMS) {
-            pool = new HashSet<>();
             for (ResourceLocation rl : BuiltInRegistries.ITEM.keySet()) {
                 if (isItem.test(rl.toString())) {
-                    pool.add(rl.toString());
+                    variants.computeIfAbsent(rl.toString(), k -> new OutputWalker.Stack(k, null));
                 }
             }
-        } else {
-            pool = outputPool;
+        }
+        Set<String> pool = variants.keySet();
+        int withComponents = 0;
+        for (OutputWalker.Stack v : variants.values()) {
+            if (v.components() != null) {
+                withComponents++;
+            }
         }
         Map<String, String> mapping = Shuffle.derangement(pool, seed);
 
@@ -201,9 +206,15 @@ public final class RouletteEngine {
                 continue;
             }
             String before = st.samples < sampleLimit ? GSON.toJson(json) : null;
-            int n = OutputWalker.rewrite(json, isItem, isFluid,
-                    s -> mapping.get(ResourceLocation.parse(s).toString()),
-                    RouletteEngine::maxStackSize, defaults::componentsFor);
+            int n = OutputWalker.rewrite(json, isItem, isFluid, (s, components) -> {
+                String to = mapping.get(OutputWalker.variantKey(ResourceLocation.parse(s).toString(), components));
+                if (to == null) {
+                    return null;
+                }
+                OutputWalker.Stack target = variants.get(to);
+                return target.components() != null ? target
+                        : new OutputWalker.Stack(target.id(), ItemDefaults.fallback(target.id()));
+            }, RouletteEngine::maxStackSize);
             if (n == 0) {
                 out.add(holder);
                 continue;
@@ -246,11 +257,12 @@ public final class RouletteEngine {
             excluded += st.excluded;
         }
         Path dir = FMLPaths.GAMEDIR.get().resolve("logs").resolve(RecipeRoulette.MOD_ID);
-        LOGGER.info("[reciperoulette] scrambled {} of {} recipes; seed {}, pool {} with {} items; "
+        LOGGER.info("[reciperoulette] scrambled {} of {} recipes; seed {}, pool {} with {} variants of {} items; "
                         + "no outputs found {}, excluded {}, encode failed {}, decode failed {}; "
-                        + "{} items keep their own result components; pass1 {} ms, pass2 {} ms; report in {}",
-                changed, total, seed, poolMode, pool.size(), noOutputs, excluded, encodeFailed, decodeFailed,
-                defaults.itemsWithComponents(),
+                        + "{} variants carry components; pass1 {} ms, pass2 {} ms; report in {}",
+                changed, total, seed, poolMode, pool.size(),
+                variants.values().stream().map(OutputWalker.Stack::id).distinct().count(),
+                noOutputs, excluded, encodeFailed, decodeFailed, withComponents,
                 (pass1 - start) / 1_000_000, (end - pass1) / 1_000_000, dir);
         writeReport(dir, stats, mapping, samples, seed, poolMode, pool.size(), total, changed,
                 (end - start) / 1_000_000);
@@ -305,7 +317,7 @@ public final class RouletteEngine {
             Files.createDirectories(dir);
             try (Writer w = Files.newBufferedWriter(dir.resolve("report.txt"), StandardCharsets.UTF_8)) {
                 w.write("Recipe Roulette report " + LocalDateTime.now() + "\n");
-                w.write("seed " + seed + ", pool " + poolMode + " (" + poolSize + " items), scrambled "
+                w.write("seed " + seed + ", pool " + poolMode + " (" + poolSize + " item variants), scrambled "
                         + changed + " of " + total + " recipes in " + millis + " ms\n\n");
                 w.write("Per recipe type. 'none' = no output item found: either the type only makes fluids or\n"
                         + "dynamic results, or its format hides outputs under a key the walker does not know.\n\n");
@@ -334,7 +346,8 @@ public final class RouletteEngine {
                 }
             }
             try (Writer w = Files.newBufferedWriter(dir.resolve("mapping.tsv"), StandardCharsets.UTF_8)) {
-                w.write("# seed " + seed + ": a recipe that made <from> now makes <to>\nfrom\tto\n");
+                w.write("# seed " + seed + ": a recipe that made <from> now makes <to>\n"
+                        + "# a variant is an item id, plus its components when it has any\nfrom\tto\n");
                 for (Map.Entry<String, String> e : new TreeMap<>(mapping).entrySet()) {
                     w.write(e.getKey() + "\t" + e.getValue() + "\n");
                 }

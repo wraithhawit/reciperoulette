@@ -180,6 +180,50 @@ class OutputWalkerTest {
     }
 
     @Test
+    void variantKeyIgnoresKeyOrder() {
+        var a = json("{\"x:b\":1,\"x:a\":{\"q\":2,\"p\":3}}").getAsJsonObject();
+        var b = json("{\"x:a\":{\"p\":3,\"q\":2},\"x:b\":1}").getAsJsonObject();
+        assertEquals(OutputWalker.variantKey("minecraft:stone", a), OutputWalker.variantKey("minecraft:stone", b));
+        assertEquals("minecraft:stone", OutputWalker.variantKey("minecraft:stone", null));
+        assertEquals("minecraft:stone", OutputWalker.variantKey("minecraft:stone", new com.google.gson.JsonObject()));
+    }
+
+    @Test
+    void variantsOfOneItemSwapSeparately() {
+        // Two wood types of one chest item: each must get its own target (Sophisticated Storage).
+        JsonElement spruce = json("""
+                {"result":{"id":"minecraft:crafting_table","count":1,"components":{"w":"spruce"}}}""");
+        JsonElement oak = json("""
+                {"result":{"id":"minecraft:crafting_table","count":1,"components":{"w":"oak"}}}""");
+        JsonElement stone = json("""
+                {"result":{"id":"minecraft:stone","count":1}}""");
+        var spruceC = json("{\"w\":\"spruce\"}").getAsJsonObject();
+        Map<String, OutputWalker.Stack> map = Map.of(
+                OutputWalker.variantKey("minecraft:crafting_table", spruceC), new OutputWalker.Stack("minecraft:stone", null),
+                OutputWalker.variantKey("minecraft:crafting_table", json("{\"w\":\"oak\"}").getAsJsonObject()),
+                new OutputWalker.Stack("minecraft:crafting_table", spruceC),
+                "minecraft:stone", new OutputWalker.Stack("minecraft:cobblestone", null));
+        java.util.function.BiFunction<String, com.google.gson.JsonObject, OutputWalker.Stack> f =
+                (id, c) -> map.get(OutputWalker.variantKey(id, c));
+        OutputWalker.rewrite(spruce, IS_ITEM, IS_FLUID, f, id -> 64);
+        OutputWalker.rewrite(oak, IS_ITEM, IS_FLUID, f, id -> 64);
+        OutputWalker.rewrite(stone, IS_ITEM, IS_FLUID, f, id -> 64);
+        assertEquals(json("{\"result\":{\"id\":\"minecraft:stone\",\"count\":1}}"), spruce);
+        assertEquals(json("{\"result\":{\"id\":\"minecraft:crafting_table\",\"count\":1,\"components\":{\"w\":\"spruce\"}}}"), oak);
+        assertEquals(json("{\"result\":{\"id\":\"minecraft:cobblestone\",\"count\":1}}"), stone);
+    }
+
+    @Test
+    void componentsIngredientDropsPatchRemovals() {
+        JsonElement r = json("""
+                {"outputs":{"ingredient":{"type":"neoforge:components","items":"minecraft:stone","components":{"a":1}}}}""");
+        var patch = json("{\"b\":2,\"!c\":{}}").getAsJsonObject();
+        OutputWalker.rewrite(r, IS_ITEM, IS_FLUID, (id, c) -> new OutputWalker.Stack("minecraft:cobblestone", patch), id -> 64);
+        var ing = r.getAsJsonObject().getAsJsonObject("outputs").getAsJsonObject("ingredient");
+        assertEquals(json("{\"b\":2}"), ing.get("components"));
+    }
+
+    @Test
     void shuffleIsDerangementAndDeterministic() {
         Set<String> pool = new HashSet<>(ITEMS);
         Map<String, String> a = Shuffle.derangement(pool, 42);

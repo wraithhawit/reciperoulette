@@ -6,6 +6,8 @@ take the crafting-table recipe, but the result is something else entirely.
 
 - **One item, one swap.** Each item is swapped for exactly one other item, everywhere. If crafting
   tables become cyan sofas, every recipe that made a crafting table now makes a cyan sofa.
+  Variants of one item that differ only by data, like Sophisticated Storage chests in each
+  wood type, count as separate items, so each one keeps a recipe.
 - **Seeded.** The seed is in `config/reciperoulette-common.toml`. The same pack and the same seed
   always give the same scramble. Seed `0` picks a random one on the next load and saves it.
 - **Any pack.** It needs no per-pack setup. Recipes are read after every mod and KubeJS script has

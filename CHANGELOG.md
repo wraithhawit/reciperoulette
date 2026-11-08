@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 (2026-11-08)
+
+- The scramble now swaps item variants, not just items: an item with different data (components)
+  counts as a separate result. Sophisticated Storage chests, barrels and limited barrels in every
+  wood type (spruce, birch, ...) now each have a recipe. Before, every wood type shared one swap,
+  so only oak could be crafted and JEI/EMI showed no recipe for the rest. The same goes for other
+  items that differ only by data, like GregTech bee combs (one per bee type).
+- Tiered Sophisticated Storage chests and barrels (iron, gold, diamond, netherite) still come out
+  oak only: their upgrade recipes copy the wood type from the chest you put in, so the pack's
+  recipes hold just one variant of each.
+- This changes the scramble for every existing seed once. `mapping.tsv` lists variants; one with
+  data is written as the id followed by its components.
+
 ## 0.3.0 (2026-11-08)
 
 - GregTech outputs that carry item data are now scrambled too (bee combs from the Apiary, lamps,
