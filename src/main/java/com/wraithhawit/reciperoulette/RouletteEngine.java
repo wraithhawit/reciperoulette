@@ -93,10 +93,12 @@ public final class RouletteEngine {
         if (!RouletteConfig.SPEC.isLoaded()) {
             LOGGER.error("[reciperoulette] config not loaded when recipes loaded; leaving {} recipes unscrambled",
                     recipes.size());
+            TradeScramble.publish(null, null);
             return null;
         }
         if (!RouletteConfig.ENABLED.get()) {
             LOGGER.info("[reciperoulette] disabled in config; {} recipes left as they are", recipes.size());
+            TradeScramble.publish(null, null);
             return null;
         }
         long start = System.nanoTime();
@@ -188,6 +190,7 @@ public final class RouletteEngine {
             }
         }
         Map<String, String> mapping = Shuffle.derangement(pool, seed);
+        TradeScramble.publish(mapping, variants);
 
         // Pass 2: rewrite and decode.
         List<RecipeHolder<?>> out = new ArrayList<>(list.size());

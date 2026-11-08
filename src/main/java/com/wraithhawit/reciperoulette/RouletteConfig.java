@@ -23,6 +23,7 @@ public final class RouletteConfig {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> EXCLUDED_ITEMS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> EXCLUDED_RECIPE_TYPES;
     public static final ModConfigSpec.IntValue SAMPLES_PER_TYPE;
+    public static final ModConfigSpec.BooleanValue SCRAMBLE_TRADES;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -41,6 +42,11 @@ public final class RouletteConfig {
         SAMPLES_PER_TYPE = b.comment("Write this many before/after JSON samples per recipe type to",
                         "logs/reciperoulette/samples.txt, to check what got scrambled. 0 turns it off.")
                 .defineInRange("samplesPerType", 1, 0, 100);
+        SCRAMBLE_TRADES = b.comment("Also swap what villagers and wandering traders sell, with the same swap as recipes",
+                        "(an emerald trade that sold bread sells whatever bread recipes now make).",
+                        "Only trades made after this is on change: a villager keeps the trades it already has.",
+                        "Takes effect right away, no reload needed.")
+                .define("scrambleTrades", false);
         SPEC = b.build();
     }
 

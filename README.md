@@ -40,6 +40,7 @@ move the few items whose neighbours in the cycle changed, not the whole pack.
 | `excludedItems` | `[]` | item ids that never move and never become a result |
 | `excludedRecipeTypes` | `[]` | recipe types left untouched, e.g. `"minecraft:stonecutting"` |
 | `samplesPerType` | `1` | before/after JSON samples per recipe type written to `samples.txt` |
+| `scrambleTrades` | `false` | also swap what villagers and wandering traders sell, with the same swap as recipes; only new trades change, and it applies without a reload |
 
 ## Output files (`logs/reciperoulette/`, rewritten on every load)
 

@@ -10,6 +10,10 @@
 - Tiered Sophisticated Storage chests and barrels (iron, gold, diamond, netherite) still come out
   oak only: their upgrade recipes copy the wood type from the chest you put in, so the pack's
   recipes hold just one variant of each.
+- New config option `scrambleTrades` (off by default): villagers and wandering traders sell the
+  swapped item too, using the same swap as recipes, so a farmer's emerald trade sells whatever
+  emerald recipes now make. Trades added by other mods are included. Only trades made after it is
+  turned on change; a villager keeps the trades it already has. It applies without a reload.
 - This changes the scramble for every existing seed once. `mapping.tsv` lists variants; one with
   data is written as the id followed by its components.
 
